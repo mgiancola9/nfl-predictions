@@ -2,6 +2,7 @@ import preprocess
 import NN_dropout
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 if __name__ == "__main__":
     merged_data = preprocess.merge_data()
@@ -28,30 +29,41 @@ if __name__ == "__main__":
 
     input_features = X_train_t.shape[1]
 
-    DROPOUT_RATES = [0.1, 0.3, 0.5]
-    LEARNING_RATE = 0.01
-    NUM_ITERATIONS = 5000
-    BATCH_SIZE = 5
+    DROPOUT_RATE = 0.2 #0.2 is the best from testing
+    LEARNING_RATE = [0.001, 0.003, 0.01, 0.03, 0.05]
+    NUM_ITERATIONS = [2500, 5000, 10000]
+    BATCH_SIZE = 16
     CHECK_EVERY = 500
 
-    for dropout_rate in DROPOUT_RATES:
-        print(f"\nTraining with Dropout Rate: {dropout_rate}")
+    for lr in LEARNING_RATE:
+        for iter in NUM_ITERATIONS:
+            print(f"\nTraining with learning rate: {lr}, iterations: {iter}")
+            train_accs_final = []
+            val_accs_final = []
 
-        model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=dropout_rate)
-        criterion = nn.BCELoss()
-        optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+            for _ in range(20):
+                model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
+                criterion = nn.BCELoss()
+                optimizer = optim.SGD(model.parameters(), lr=lr)
 
-        train_losses, val_losses, train_accs, val_accs, iterations = NN_dropout.train_with_minibatch_dropout(
-            model, criterion, optimizer,
-            X_train_t, y_train_t,
-            X_val_t, y_val_t,
-            num_iterations=NUM_ITERATIONS,
-            batch_size=BATCH_SIZE,
-            check_every=CHECK_EVERY
-        )
+                train_losses, val_losses, train_accs, val_accs, iterations = NN_dropout.train_with_minibatch_dropout(
+                    model, criterion, optimizer,
+                    X_train_t, y_train_t,
+                    X_val_t, y_val_t,
+                    num_iterations=iter,
+                    batch_size=BATCH_SIZE,
+                    check_every=CHECK_EVERY
+                )
 
-        print(f"Final Training Accuracy: {train_accs[-1]*100:.2f}%")
-        print(f"Final Validation Accuracy: {val_accs[-1]*100:.2f}%")
+                train_accs_final.append(train_accs[-1])
+                val_accs_final.append(val_accs[-1])
+
+            avg_train_acc = np.mean(train_accs_final)
+            std_train_acc = np.std(train_accs_final)
+            avg_val_acc = np.mean(val_accs_final)
+            std_val_acc = np.std(val_accs_final)
+            print(f"Average Final Training Accuracy: {avg_train_acc*100:.2f}% ± {std_train_acc*100:.2f}%")
+            print(f"Average Final Validation Accuracy: {avg_val_acc*100:.2f}% ± {std_val_acc*100:.2f}%")
 
 
 
