@@ -83,28 +83,3 @@ def preprocess(df, feature_columns, target_column, test_size = 0.2):
 
     return X_train_t, X_val_t, y_train_t, y_val_t, scaler
 
-
-if __name__ == "__main__":
-    merged_data = merge_data()
-    #print(merged_data.head())
-
-    #string cols: roof, surface
-    feature_columns = [
-    #Market/context
-    'total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
-    'away_spread_odds','home_spread_odds','week','temp','wind',
-    'away_rest','home_rest', 'roof_closed','roof_dome','roof_open','roof_outdoors',
-    'surface_a_turf','surface_astroturf','surface_fieldturf','surface_grass',
-    'surface_grass','surface_matrixturf','surface_sportturf','surface_unknown',
-
-    #Away team stats
-    'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
-    'away_receiving_yards','away_receiving_tds','away_receiving_epa','away_def_sacks','away_def_interceptions',
-    #Home team stats
-    'home_passing_yards','home_passing_tds','home_passing_epa','home_rushing_yards','home_rushing_tds','home_rushing_epa',
-    'home_receiving_yards','home_receiving_tds','home_receiving_epa','home_def_sacks','home_def_interceptions',
-]
-    target_col = 'over_hit'
-
-    X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess(merged_data, feature_columns, target_col)
-
