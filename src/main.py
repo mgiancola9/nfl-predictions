@@ -1,5 +1,6 @@
 import preprocess
 import NN_dropout
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
@@ -54,12 +55,12 @@ if __name__ == "__main__":
     train_losses_all_runs = []
     val_losses_all_runs = [] #loss for coinflip is 0.693. Want around 0.67 or lower which corresponds to about 60% accuracy
 
-    for _ in range(1):
+    for _ in range(5):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
         optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
 
-        train_losses, val_losses, train_accs, val_accs, iterations = NN_dropout.train_with_minibatch_dropout(
+        saved_model, train_losses, val_losses, train_accs, val_accs, iterations, best_val_loss = NN_dropout.train_with_minibatch_dropout(
             model, criterion, optimizer,
             X_train_t, y_train_t,
             X_val_t, y_val_t,
@@ -72,6 +73,10 @@ if __name__ == "__main__":
         val_accs_final.append(val_accs[-1])
         train_losses_all_runs.append(train_losses)
         val_losses_all_runs.append(val_losses)
+
+        filename = f"Saved_models/model_{best_val_loss*100:.4f}.pth"
+        torch.save(saved_model.state_dict(), filename)
+
 
     avg_train_acc = np.mean(train_accs_final)
     std_train_acc = np.std(train_accs_final)

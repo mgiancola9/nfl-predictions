@@ -104,7 +104,7 @@ def train_with_minibatch_dropout(model, criterion, optimizer, X_train, y_train, 
     print(f"Validation Accuracy at best model: {best_val_acc*100:.2f}%")
 
 
-    return train_losses, val_losses, train_accs, val_accs, iterations
+    return model, train_losses, val_losses, train_accs, val_accs, iterations, best_val_loss
 
 
 
