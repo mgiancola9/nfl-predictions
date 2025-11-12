@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     input_features = X_train_t.shape[1]
 
-    DROPOUT_RATE = 0.5 #0.2 is the best from testing
+    DROPOUT_RATE = 0.5
     LEARNING_RATE = 0.01
     NUM_ITERATIONS = 7500
     BATCH_SIZE = 16
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     train_losses_all_runs = []
     val_losses_all_runs = [] #loss for coinflip is 0.693. Want around 0.67 or lower which corresponds to about 60% accuracy
 
-    for _ in range(5):
+    for _ in range(1):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
         optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
@@ -74,8 +74,8 @@ if __name__ == "__main__":
         train_losses_all_runs.append(train_losses)
         val_losses_all_runs.append(val_losses)
 
-        filename = f"Saved_models/model_{best_val_loss*100:.4f}.pth"
-        torch.save(saved_model.state_dict(), filename)
+        #filename = f"Saved_models/model_{best_val_loss*100:.4f}.pth"
+        #torch.save(saved_model.state_dict(), filename)
 
 
     avg_train_acc = np.mean(train_accs_final)
