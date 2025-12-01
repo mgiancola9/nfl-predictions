@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import joblib
 
 if __name__ == "__main__":
-    merged_data = preprocess.merge_data("games_2016_2025.csv")
+    merged_data = preprocess.merge_data("games_test.csv")
 
     feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
     'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         train_losses_all_runs.append(train_losses)
         val_losses_all_runs.append(val_losses)
 
-        filename = f"Saved_models/model_{best_val_loss*100:.4f}_2016-2025.pth"
+        filename = f"Saved_models/model_{best_val_loss*100:.4f}.pth"
         torch.save(saved_model.state_dict(), filename)
         joblib.dump(scaler, filename.replace('.pth', '_scaler.pkl'))
 

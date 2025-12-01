@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 import torch
 
 #Merge game data with team statistics for both home and away teams
-def merge_data(file_name='games_2016_2025.csv'):
+def merge_data(file_name='games_test.csv'):
     '''
     Returns a DataFrame merging game data with team statistics for both home and away teams.
     '''
@@ -15,7 +15,7 @@ def merge_data(file_name='games_2016_2025.csv'):
     games = pd.read_csv(os.path.join(DATA_DIR, file_name))
 
     team_stats = pd.concat(
-        [pd.read_csv(os.path.join(DATA_DIR, f'stats_team_reg_{year}.csv')) for year in range(2016, 2026)],
+        [pd.read_csv(os.path.join(DATA_DIR, f'stats_team_reg_{year}.csv')) for year in range(2016, 2026)], #This is the part that is changing to be a rolling avg
         ignore_index=True
     )
 

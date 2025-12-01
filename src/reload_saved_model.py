@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 
-merged_data = preprocess.merge_data()
+merged_data = preprocess.merge_data("games_train.csv")
 
 feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
 'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
@@ -21,14 +21,14 @@ feature_columns = ['total_line','over_odds','under_odds','spread_line','away_mon
 
 target_col = 'over_hit'
 
-scaler = joblib.load("Saved_models\model_64.5899_2016-2020_scaler.pkl")
+scaler = joblib.load("Enter Scaler Path Here")  # Load the scaler used during model training
 
 X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns, target_col)
 
 input_features = X_train_t.shape[1]
 
 DROPOUT_RATE = 0.5
-MODEL_PATH = "Saved_models\model_64.5899_2016-2020.pth"
+MODEL_PATH = "Enter Model Path Here"
 
 model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
 model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
