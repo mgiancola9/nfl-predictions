@@ -5,17 +5,17 @@ from sklearn.preprocessing import StandardScaler
 import torch
 
 #Merge game data with team statistics for both home and away teams
-def merge_data():
+def merge_data(file_name='games_2016_2025.csv'):
     '''
     Returns a DataFrame merging game data with team statistics for both home and away teams.
     '''
 
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_DIR = os.path.join(BASE_DIR, 'Data')
-    games = pd.read_csv(os.path.join(DATA_DIR, 'games.csv')) #games 2 is 2016-2020
+    games = pd.read_csv(os.path.join(DATA_DIR, file_name))
 
     team_stats = pd.concat(
-        [pd.read_csv(os.path.join(DATA_DIR, f'stats_team_reg_{year}.csv')) for year in range(2021, 2026)],
+        [pd.read_csv(os.path.join(DATA_DIR, f'stats_team_reg_{year}.csv')) for year in range(2016, 2026)],
         ignore_index=True
     )
 
@@ -43,17 +43,12 @@ def merge_data():
         how='left'
     )
 
-    #convert categorical features to numbers using one-hot encoding
-    games['roof'] = games['roof'].fillna('unknown').replace('', 'unknown')
-    games['surface'] = games['surface'].fillna('unknown').replace('', 'unknown')
-    games = pd.get_dummies(games, columns=['roof', 'surface'])
-
     #games.head(50).to_csv('merged_data_sample2.csv', index=False)
 
     return games
 
 
-def preprocess(df, feature_columns, target_column, test_size = 0.2):
+def preprocess(df, feature_columns, target_column, test_size = 0.2, scaler=None):
     """
     Preprocess merged NFL games DataFrame:
       - Select features and label
@@ -70,9 +65,14 @@ def preprocess(df, feature_columns, target_column, test_size = 0.2):
     # 2. Split train/val
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=test_size, stratify=y)
 
+
     #Scale features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
+    if scaler is None: #Initialize new scaler if not provided
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+    else:
+        X_train_scaled = scaler.transform(X_train) #Use provided scaler from reloaded model
+    
     X_val_scaled = scaler.transform(X_val)
 
     #Convert to PyTorch tensors

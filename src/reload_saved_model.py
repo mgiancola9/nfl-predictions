@@ -5,10 +5,11 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 
 merged_data = preprocess.merge_data()
 
-feature_columns2 = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
+feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
 'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
 #Away team stats
 'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
@@ -20,7 +21,9 @@ feature_columns2 = ['total_line','over_odds','under_odds','spread_line','away_mo
 
 target_col = 'over_hit'
 
-X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns2, target_col)
+scaler = joblib.load("Saved_models\model_64.5899_2016-2020_scaler.pkl")
+
+X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns, target_col)
 
 input_features = X_train_t.shape[1]
 

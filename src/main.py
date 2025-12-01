@@ -5,28 +5,12 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 
 if __name__ == "__main__":
-    merged_data = preprocess.merge_data()
+    merged_data = preprocess.merge_data("games_2016_2025.csv")
 
-    #string cols: roof, surface
-    feature_columns = [
-    #Market/context
-    'total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
-    'away_spread_odds','home_spread_odds','week','temp','wind',
-    'away_rest','home_rest', 'roof_closed','roof_dome','roof_open','roof_outdoors',
-    'surface_a_turf','surface_astroturf','surface_fieldturf','surface_grass',
-    'surface_grass','surface_matrixturf','surface_sportturf','surface_unknown',
-    #Away team stats
-    'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
-    'away_receiving_yards','away_receiving_tds','away_receiving_epa','away_def_sacks','away_def_interceptions',
-    #Home team stats
-    'home_passing_yards','home_passing_tds','home_passing_epa','home_rushing_yards','home_rushing_tds','home_rushing_epa',
-    'home_receiving_yards','home_receiving_tds','home_receiving_epa','home_def_sacks','home_def_interceptions',
-    ]
-    
-
-    feature_columns2 = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
+    feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
     'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
     #Away team stats
     'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
@@ -38,7 +22,7 @@ if __name__ == "__main__":
 
     target_col = 'over_hit'
 
-    X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns2, target_col)
+    X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns, target_col)
 
     input_features = X_train_t.shape[1]
 
@@ -55,7 +39,7 @@ if __name__ == "__main__":
     train_losses_all_runs = []
     val_losses_all_runs = [] #loss for coinflip is 0.693. Want around 0.67 or lower which corresponds to about 60% accuracy
 
-    for _ in range(5):
+    for _ in range(1):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
         optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
@@ -74,10 +58,12 @@ if __name__ == "__main__":
         train_losses_all_runs.append(train_losses)
         val_losses_all_runs.append(val_losses)
 
-        filename = f"Saved_models/model_{best_val_loss*100:.4f}_2016-2020.pth"
+        filename = f"Saved_models/model_{best_val_loss*100:.4f}_2016-2025.pth"
         torch.save(saved_model.state_dict(), filename)
+        joblib.dump(scaler, filename.replace('.pth', '_scaler.pkl'))
 
 
+    #Final statistics
     avg_train_acc = np.mean(train_accs_final)
     std_train_acc = np.std(train_accs_final)
     avg_val_acc = np.mean(val_accs_final)
@@ -87,11 +73,11 @@ if __name__ == "__main__":
 
 
     #Plotting
-    train_losses = np.array(train_losses_all_runs)  # [n_runs, n_checkpoints]
+    train_losses = np.array(train_losses_all_runs)
     val_losses = np.array(val_losses_all_runs)
     avg_train_losses = np.mean(train_losses, axis=0)
     avg_val_losses = np.mean(val_losses, axis=0)
-    iterations = np.arange(0, NUM_ITERATIONS+1, CHECK_EVERY)[:len(avg_train_losses)]  # or from your 'iterations' list
+    iterations = np.arange(0, NUM_ITERATIONS+1, CHECK_EVERY)[:len(avg_train_losses)]
 
     plt.figure(figsize=(8,5))
     plt.plot(iterations, avg_train_losses, label='Train Loss')

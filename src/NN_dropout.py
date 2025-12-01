@@ -105,6 +105,3 @@ def train_with_minibatch_dropout(model, criterion, optimizer, X_train, y_train, 
 
 
     return model, train_losses, val_losses, train_accs, val_accs, iterations, best_val_loss
-
-
-
