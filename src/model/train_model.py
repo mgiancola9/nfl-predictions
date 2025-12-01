@@ -3,28 +3,34 @@
 Train the Spread Model using Walk-Forward Validation (Expanding Window).
 
 Strategy:
-1. Train on historical data (2021-2024).
-2. For the 2025 test season, iterate week-by-week.
-3. For each week, retrain the model including ALL data prior to that week.
-4. Predict the current week and store results.
+1. Load 'train_processed.csv' (2021-2024 History).
+2. Load 'test_processed.csv' (2025 Season).
+3. Iterate through each week of 2025:
+   - Train on History + All 2025 games played BEFORE that week.
+   - Predict the games for the CURRENT week.
+   - Store predictions and move to the next week.
+4. Calculate final profitability metrics (Accuracy, Edge).
 """
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score, brier_score_loss, classification_report
+from sklearn.metrics import accuracy_score, brier_score_loss
 
 # --- CONFIGURATION ---
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 # Columns to exclude from training features (Metadata + Leaks)
-# Note: 'fav_cover' is our target.
+# 'fav_cover' is our target variable.
 DROP_COLS = [
     "season", "week", "game_id", "home_team", "away_team", 
     "gameday", "weekday", "gametime", "fav_cover",
-    # Add any other metadata columns present in your csv
+    "spread_line", "total_line", "location", "div_game", 
+    "roof", "surface", "temp", "wind" 
+    # Note: You can un-comment specific context features (like 'wind') 
+    # if you want the model to use them.
 ]
 
 def load_data():
@@ -54,13 +60,6 @@ def get_features_and_target(df):
 def train_predict_walk_forward(train_base, test_season):
     """
     Performs the expanding window validation.
-    
-    Args:
-        train_base (pd.DataFrame): The static history (2021-2024).
-        test_season (pd.DataFrame): The current season to simulate (2025).
-        
-    Returns:
-        pd.DataFrame: The test_season dataframe with added 'pred_prob' and 'pred_class' columns.
     """
     # Sort test season by week to simulate chronological time
     test_season = test_season.sort_values("week")
@@ -72,7 +71,7 @@ def train_predict_walk_forward(train_base, test_season):
     
     for current_week in weeks:
         # 1. Define the Training Window
-        #    Train = Base History + 2025 games *before* this week
+        #    Train = Base History (2021-2024) + 2025 games *before* this week
         current_season_history = test_season[test_season["week"] < current_week]
         train_data = pd.concat([train_base, current_season_history], axis=0)
         
@@ -87,7 +86,7 @@ def train_predict_walk_forward(train_base, test_season):
         X_test, _ = get_features_and_target(test_data)
         
         # 4. Train Model
-        #    Using standard XGBoost parameters - tune these later!
+        #    Using standard XGBoost parameters - we can tune these later!
         model = XGBClassifier(
             n_estimators=100,
             learning_rate=0.05,
@@ -95,29 +94,38 @@ def train_predict_walk_forward(train_base, test_season):
             subsample=0.8,
             colsample_bytree=0.8,
             random_state=42,
-            n_jobs=-1
+            n_jobs=-1,
+            eval_metric='logloss'
         )
         model.fit(X_train, y_train)
         
         # 5. Predict
-        #    [0] is prob of class 0, [1] is prob of class 1 (Favorite Covers)
+        #    [0] is prob of class 0 (Underdog covers), [1] is prob of class 1 (Favorite covers)
         probs = model.predict_proba(X_test)[:, 1]
         
         # 6. Store Predictions
         test_data["pred_prob"] = probs
         test_data["pred_class"] = (probs >= 0.5).astype(int)
         
-        # Optional: Calculate 'Edge' (Confidence - 50%)
+        # Calculate 'Edge' (Confidence - 50%)
+        # Example: Prob 0.60 -> Edge 0.10
         test_data["edge"] = np.abs(test_data["pred_prob"] - 0.5)
         
         all_predictions.append(test_data)
         
         print(f"   Week {current_week}: Trained on {len(train_data)} games. Predicted {len(test_data)} games.")
 
+    if not all_predictions:
+        return pd.DataFrame()
+        
     return pd.concat(all_predictions, axis=0)
 
 def evaluate_performance(results_df):
     """Calculates accuracy and betting metrics."""
+    if results_df.empty:
+        print("No predictions were made.")
+        return
+
     y_true = results_df["fav_cover"]
     y_pred = results_df["pred_class"]
     
@@ -132,32 +140,33 @@ def evaluate_performance(results_df):
     print(f"Brier Score:           {brier:.4f}")
     print("-" * 40)
     
-    # Check profitability on "High Confidence" picks
-    # (e.g. model implies >53% or >55% probability)
-    thresholds = [0.53, 0.55, 0.57]
+    # Profitability Check at different confidence levels
+    thresholds = [0.50, 0.53, 0.55]
+    
     for t in thresholds:
-        # Filter for games where prob > t OR prob < (1-t)
-        # i.e., model is confident either Yes or No
-        confident_picks = results_df[results_df["edge"] >= (t - 0.5)]
+        # Filter for games where model confidence is above threshold
+        # Edge of 0.03 means probability > 0.53 OR < 0.47
+        min_edge = t - 0.5
+        confident_picks = results_df[results_df["edge"] >= min_edge]
         
         if len(confident_picks) > 0:
             conf_acc = accuracy_score(confident_picks["fav_cover"], confident_picks["pred_class"])
             print(f"Accuracy at >{t:.0%} confidence ({len(confident_picks)} games): {conf_acc:.2%}")
         else:
-            print(f"Accuracy at >{t:.0%} confidence: No games met criteria")
+            print(f"Accuracy at >{t:.0%} confidence: No games found")
 
 def main():
-    # 1. Load
+    # 1. Load Data
     train_base, test_season = load_data()
     
-    # 2. Walk-Forward Train & Predict
+    # 2. Run Simulation
     results = train_predict_walk_forward(train_base, test_season)
     
     # 3. Evaluate
     evaluate_performance(results)
     
-    # 4. Save detailed predictions for review
-    output_file = DATA_PROCESSED_DIR / "predictions_2025_walk_forward.csv"
+    # 4. Save detailed log for review
+    output_file = DATA_PROCESSED_DIR / "predictions_2025.csv"
     results.to_csv(output_file, index=False)
     print(f"\nDetailed predictions saved to: {output_file}")
 

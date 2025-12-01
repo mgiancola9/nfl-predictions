@@ -26,8 +26,12 @@ def load_games() -> pd.DataFrame:
         raise FileNotFoundError(f"Missing games.csv at: {path}")
     
     games = pd.read_csv(path, low_memory=False)
-    # Filter to Regular Season
-    games = games[games["game_type"] == "REG"].copy()
+    
+    # FILTER: Regular Season AND Year >= 2021
+    games = games[
+        (games["game_type"] == "REG") & 
+        (games["season"] >= 2021)  # <--- ADD THIS LINE
+    ].copy()
     
     # Ensure standard columns exist
     req_cols = ['season', 'week', 'home_team', 'away_team', 'game_id']

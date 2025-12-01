@@ -133,7 +133,7 @@ def calculate_rolling_windows(df):
 
 def main():
     print("--- Generating Rolling Stats (Offense + Defense) ---")
-    full_df = load_local_files(2021, 2025)
+    full_df = load_local_files(2020, 2025)
     rolling_df = calculate_rolling_windows(full_df)
     
     output_path = DATA_INTERIM_DIR / "team_strengths_rolling.csv"

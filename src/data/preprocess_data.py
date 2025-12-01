@@ -1,195 +1,172 @@
-import os
-import numpy as np
+#!/usr/bin/env python3
+"""
+Final Data Assembly Pipeline.
+
+1. Loads the raw schedule/outcomes (games.csv).
+2. Loads the engineered features (team_strengths_features.csv).
+3. Merges them into a single Master DataFrame.
+4. Creates the Target Label ('fav_cover').
+5. Removes "Future Data" (Scores, Results) to prevent leakage.
+6. Splits into Train (2021-2024) and Test (2025).
+"""
+
 import pandas as pd
+import numpy as np
 from pathlib import Path
-from glob import glob
 
-# --- Directory Setup (Standard Data Science Structure) ---
-# Assuming this script is run from project_root/src/data/
+# --- PATH SETUP ---
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = PROJECT_ROOT / "data"
-PROCESSED_DIR = DATA_DIR / "processed"
-INTERIM_DIR = DATA_DIR / "interim"
+DATA_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DATA_INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
+DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
-# Create output directories if they don't exist
-PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-INTERIM_DIR.mkdir(parents=True, exist_ok=True)
-
-# ------------------------------------------------------------------------
-# 1. Loading Functions (I/O)
-# ------------------------------------------------------------------------
+# Ensure output directory exists
+DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_games() -> pd.DataFrame:
-    """Load and filter the base games data."""
-    path = DATA_DIR / "raw" / "games.csv"
+    """Load raw game schedule and outcomes."""
+    path = DATA_RAW_DIR / "games.csv"
     if not path.exists():
         raise FileNotFoundError(f"Missing games.csv at: {path}")
 
-    games = pd.read_csv(path)
+    games = pd.read_csv(path, low_memory=False)
 
-    # Filter to Regular Season and desired modeling window (2021-2025)
+    # Filter to Regular Season and relevant years
     games = games[
-        games["game_type"].eq("REG") &
-        games["season"].between(2021, 2025)
+        (games["game_type"] == "REG") &
+        (games["season"] >= 2021)
     ].copy()
+    
+    # --- ADD THIS LINE ---
+    # Remove games that haven't been played yet (no score)
+    games = games.dropna(subset=['home_score', 'away_score']) 
+    
+    # Standardize columns
+    cols_to_keep = [
+        "game_id", "season", "week", "home_team", "away_team", 
+        "home_score", "away_score", "spread_line", "total_line",
+        "gameday", "weekday", "gametime", "location", "div_game", 
+        "roof", "surface", "temp", "wind"
+    ]
+    
+    existing_cols = [c for c in cols_to_keep if c in games.columns]
+    return games[existing_cols]
 
-    # Cast team names to string to avoid merge issues
-    games["home_team"] = games["home_team"].astype(str)
-    games["away_team"] = games["away_team"].astype(str)
-
-    # Clean up games with no spread line (e.g., historical or incomplete 2025 data)
-    games = games.dropna(subset=['spread_line', 'home_score', 'away_score']).reset_index(drop=True)
-
-    return games
-
-def load_team_features() -> pd.DataFrame:
-    """
-    Load team features computed by team_strengths.py and build_features.py.
-    This file should contain one row per (season, team) or (game_id).
-    """
-    # Placeholder: In a complete pipeline, you would run team_strengths.py 
-    # and build_features.py first, which would save an interim file here.
-    path = INTERIM_DIR / "team_strengths_features.csv"
+def load_features() -> pd.DataFrame:
+    """Load the features created by build_features.py."""
+    path = DATA_INTERIM_DIR / "team_strengths_features.csv"
     if not path.exists():
-        print(f"WARNING: Team Strength features not found at {path}. Proceeding without them.")
-        return pd.DataFrame()
+        raise FileNotFoundError(f"Missing features file: {path}. Run build_features.py first.")
     
     return pd.read_csv(path)
 
-def load_market_features() -> pd.DataFrame:
+def create_target(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Load market features computed by market_features.py (e.g., Line Movement, Implied Probabilities).
-    """
-    # Placeholder for NEW file
-    path = INTERIM_DIR / "market_features.csv"
-    if not path.exists():
-        print(f"WARNING: Market features not found at {path}. Proceeding without them.")
-        # NOTE: You will need to implement this to hit the >= 57% goal!
-        return pd.DataFrame() 
-
-    return pd.read_csv(path)
-
-def load_injury_features() -> pd.DataFrame:
-    """
-    Load injury features computed by injury_features.py (e.g., Total VAM lost).
-    """
-    # Placeholder for NEW file
-    path = INTERIM_DIR / "injury_features.csv"
-    if not path.exists():
-        print(f"WARNING: Injury features not found at {path}. Proceeding without them.")
-        # NOTE: You will need to implement this to hit the >= 57% goal!
-        return pd.DataFrame() 
-        
-    return pd.read_csv(path)
-
-
-# ------------------------------------------------------------------------
-# 2. Target Label Creation
-# ------------------------------------------------------------------------
-
-def add_labels(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Creates the target variable 'fav_cover' based on the confirmed spread line perspective.
-    spread_line < 0 means Away is favorite.
-    spread_line > 0 means Home is favorite.
+    Creates the betting target 'fav_cover'.
+    
+    Logic:
+    - Spread is from AWAY perspective (e.g., -3.5 means Away is favored).
+    - Calculate the Home Team's Margin (Home - Away).
+    - Calculate ATS Margin = Home Margin + Spread.
+    - If ATS Margin > 0, Home Covered.
+    - If ATS Margin < 0, Away Covered.
+    
+    Target 'fav_cover':
+    - 1 if the Favorite covered.
+    - 0 if the Underdog covered.
     """
     df = df.copy()
-
-    # 1. Calculate the Home Team's Cover Margin (Against The Spread)
-    # The margin is positive if the home team covered or beat the spread implied by 'spread_line'
-    # Home ATS Margin = (Home Score - Away Score) + spread_line (from Away perspective)
-    df["ats_margin_home"] = (df["home_score"] - df["away_score"]) + df["spread_line"]
     
-    # 2. Determine if the Favorite Covered
-    # Logic:
-    # - If Home is Fav (spread_line > 0) AND Home Covered (ats_margin_home > 0) -> Favorite Covered (1)
-    # - If Away is Fav (spread_line < 0) AND Away Covered (ats_margin_home < 0) -> Favorite Covered (1)
-    # - If a team was favored but did NOT cover, or it was a Push (ats_margin_home == 0) -> Did Not Cover (0)
-
-    # Identify the favorite:
-    df["home_is_fav"] = df["spread_line"] > 0
-    df["away_is_fav"] = df["spread_line"] < 0
+    # 1. Determine who is the favorite
+    # spread_line < 0 -> Away Fav
+    # spread_line > 0 -> Home Fav
+    df['home_is_fav'] = df['spread_line'] > 0
+    df['away_is_fav'] = df['spread_line'] < 0
     
-    # Determine the outcome relative to the spread (ignoring push for now)
-    df["home_cover"] = df["ats_margin_home"] > 0
-    df["away_cover"] = df["ats_margin_home"] < 0
+    # 2. Calculate Home ATS Margin
+    # Example: Home Score 24, Away 20. Spread -3 (Away favored by 3).
+    # Home Margin = 4.
+    # ATS Margin = 4 + (-3) = +1. Home Covered.
+    df['ats_margin_home'] = (df['home_score'] - df['away_score']) + df['spread_line']
     
-    # Target Label: fav_cover = 1 if the favored team won ATS
-    df["fav_cover"] = np.where(
-        (df["home_is_fav"] & df["home_cover"]) | 
-        (df["away_is_fav"] & df["away_cover"]),
-        1,  # Favorite covered
-        0   # Favorite did not cover (or it was a push)
+    # 3. Determine Result
+    # Did Home Cover? (ATS Margin > 0)
+    home_covered = df['ats_margin_home'] > 0
+    away_covered = df['ats_margin_home'] < 0
+    
+    # 4. Set Target
+    # If Home is Fav AND Home Covered -> 1
+    # If Away is Fav AND Away Covered -> 1
+    # Else -> 0
+    df['fav_cover'] = 0
+    
+    cover_condition = (
+        (df['home_is_fav'] & home_covered) |
+        (df['away_is_fav'] & away_covered)
     )
+    
+    df.loc[cover_condition, 'fav_cover'] = 1
+    
+    # Handle Pushes (ATS Margin == 0)
+    # We can drop them or keep them as 0. For binary class, dropping is cleaner.
+    # But for now, we'll leave them as 0 (Loss for the bettor).
+    
+    return df
 
-    # 3. Handle Pushes (ats_margin_home == 0)
-    # For classification, we usually assign pushes to the non-cover class (0) or drop them. 
-    # Since we used np.where, pushes (where margin=0) defaulted to 0. We'll leave them as 0 for simplicity.
-
-    return df.drop(columns=["home_is_fav", "away_is_fav", "home_cover", "away_cover"])
-
-
-# ------------------------------------------------------------------------
-# 3. Main Pipeline: Merge, Split, and Save
-# ------------------------------------------------------------------------
+def finalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Removes leakage columns (scores) and prepares final set."""
+    
+    # Drop outcome columns that would leak the result to the model
+    leakage_cols = [
+        "home_score", "away_score", "result", "total", "ats_margin_home",
+        "home_is_fav", "away_is_fav"
+    ]
+    
+    df = df.drop(columns=[c for c in leakage_cols if c in df.columns], errors='ignore')
+    
+    return df
 
 def main():
-    """Run the complete preprocessing pipeline."""
-    print("--- 1. Loading Core Data ---")
+    print("--- Preprocessing Data Pipeline ---")
+    
+    # 1. Load
     games = load_games()
+    features = load_features()
     
-    print("--- 2. Loading Feature Modules (Interim) ---")
-    team_features = load_team_features()
-    market_features = load_market_features()
-    injury_features = load_injury_features()
+    print(f"   Loaded {len(games)} games and {len(features)} feature rows.")
     
-    # List of all feature dataframes to merge
-    all_features = [team_features, market_features, injury_features]
+    # 2. Merge
+    # We use 'inner' merge to ensure we only keep games we have features for
+    # (and removes games with no matching IDs)
+    merged = games.merge(
+        features,
+        on=['season', 'week', 'home_team', 'away_team'],
+        how='inner',
+        suffixes=('', '_feat')
+    )
     
-    # 3. Merging all features into the games DataFrame
-    print("--- 3. Merging Features ---")
-    merged_df = games.copy()
-    
-    for feature_df in all_features:
-        if not feature_df.empty:
-            # Assume features are keyed by 'game_id' or a combination of 'season', 'week', 'home_team', 'away_team'
-            # Adjust the 'on' parameter based on how you key your features
-            merged_df = merged_df.merge(
-                feature_df, 
-                on=["season", "week", "home_team", "away_team"], # Example keys
-                how="left",
-                suffixes=('', '_feat')
-            )
+    # Drop redundant columns from merge if any
+    merged = merged.loc[:, ~merged.columns.str.endswith('_feat')]
 
-    # 4. Target Label Creation
-    print("--- 4. Creating Target Label 'fav_cover' ---")
-    labeled_df = add_labels(merged_df)
+    # 3. Create Target
+    # We need scores to create the target, so we do this BEFORE dropping leakage
+    labeled = create_target(merged)
     
-    # 5. Feature Pruning: Remove Leakage Columns
-    # Drop columns that directly reveal the outcome (scores, result, final margin)
-    leak_cols = [
-        "home_score", "away_score", "result", "total", "overtime",
-        "game_type", "ats_margin_home" # The margin is the leakage column
-    ]
-    final_df = labeled_df.drop(columns=[c for c in leak_cols if c in labeled_df.columns], errors="ignore")
+    # 4. Clean up
+    final_df = finalize_columns(labeled)
     
-    # 6. Time-based Split: 2021-2024 train, 2025 test
-    print("--- 5. Splitting Data (Train: 2021-2024, Test: 2025) ---")
-    train_final = final_df[final_df["season"] < 2025].copy()
-    test_final = final_df[final_df["season"] == 2025].copy()
-
-    # 7. Saving Final Processed Data
-    train_path = PROCESSED_DIR / "train_processed.csv"
-    test_path = PROCESSED_DIR / "test_processed.csv"
+    # 5. Split (2021-2024 vs 2025)
+    train_df = final_df[final_df['season'] < 2025].copy()
+    test_df = final_df[final_df['season'] == 2025].copy()
     
-    train_final.to_csv(train_path, index=False)
-    test_final.to_csv(test_path, index=False)
-
-    print(f"\n✅ Processing complete.")
-    print(f"Training set size (2021-2024): {len(train_final)} games.")
-    print(f"Test set size (2025):          {len(test_final)} games.")
-    print(f"Saved files to: {PROCESSED_DIR}")
-
+    # 6. Save
+    train_df.to_csv(DATA_PROCESSED_DIR / "train_processed.csv", index=False)
+    test_df.to_csv(DATA_PROCESSED_DIR / "test_processed.csv", index=False)
+    
+    print(f"\n✅ Processing Complete.")
+    print(f"   Training Data: {len(train_df)} rows (2021-2024)")
+    print(f"   Testing Data:  {len(test_df)} rows (2025)")
+    print(f"   Files saved to: {DATA_PROCESSED_DIR}")
 
 if __name__ == "__main__":
     main()
