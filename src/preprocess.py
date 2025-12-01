@@ -12,7 +12,7 @@ def merge_data():
 
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_DIR = os.path.join(BASE_DIR, 'Data')
-    games = pd.read_csv(os.path.join(DATA_DIR, 'games.csv'))
+    games = pd.read_csv(os.path.join(DATA_DIR, 'games.csv')) #games 2 is 2016-2020
 
     team_stats = pd.concat(
         [pd.read_csv(os.path.join(DATA_DIR, f'stats_team_reg_{year}.csv')) for year in range(2021, 2026)],
@@ -48,7 +48,7 @@ def merge_data():
     games['surface'] = games['surface'].fillna('unknown').replace('', 'unknown')
     games = pd.get_dummies(games, columns=['roof', 'surface'])
 
-    #games.head(10).to_csv('merged_data_sample.csv', index=False)
+    #games.head(50).to_csv('merged_data_sample2.csv', index=False)
 
     return games
 

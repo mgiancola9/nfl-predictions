@@ -27,7 +27,7 @@ if __name__ == "__main__":
     
 
     feature_columns2 = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
-    'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest',
+    'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
     #Away team stats
     'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
     'away_receiving_yards','away_receiving_tds','away_receiving_epa','away_def_sacks','away_def_interceptions',
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     train_losses_all_runs = []
     val_losses_all_runs = [] #loss for coinflip is 0.693. Want around 0.67 or lower which corresponds to about 60% accuracy
 
-    for _ in range(1):
+    for _ in range(5):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
         optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
@@ -74,8 +74,8 @@ if __name__ == "__main__":
         train_losses_all_runs.append(train_losses)
         val_losses_all_runs.append(val_losses)
 
-        #filename = f"Saved_models/model_{best_val_loss*100:.4f}.pth"
-        #torch.save(saved_model.state_dict(), filename)
+        filename = f"Saved_models/model_{best_val_loss*100:.4f}_2016-2020.pth"
+        torch.save(saved_model.state_dict(), filename)
 
 
     avg_train_acc = np.mean(train_accs_final)

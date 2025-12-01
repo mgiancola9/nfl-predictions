@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 merged_data = preprocess.merge_data()
 
 feature_columns2 = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
-'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest',
+'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
 #Away team stats
 'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
 'away_receiving_yards','away_receiving_tds','away_receiving_epa','away_def_sacks','away_def_interceptions',
@@ -25,7 +25,7 @@ X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_da
 input_features = X_train_t.shape[1]
 
 DROPOUT_RATE = 0.5
-MODEL_PATH = "Saved_models/model_65.9252.pth"
+MODEL_PATH = "Saved_models\model_64.5899_2016-2020.pth"
 
 model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
 model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
