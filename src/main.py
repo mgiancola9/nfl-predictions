@@ -1,4 +1,4 @@
-import preprocess
+import preprocess_chrono_weekly as preprocess
 import NN_dropout
 import torch
 import torch.nn as nn
@@ -8,21 +8,28 @@ import matplotlib.pyplot as plt
 import joblib
 
 if __name__ == "__main__":
-    merged_data = preprocess.merge_data("games_test.csv")
+    merged_train_data = preprocess.merge_data("games_train.csv")
+    merged_test_data = preprocess.merge_data("games_test.csv")
 
     feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
-    'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest', 'season',
+    'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest',
     #Away team stats
-    'away_passing_yards','away_passing_tds','away_passing_epa','away_rushing_yards','away_rushing_tds','away_rushing_epa',
-    'away_receiving_yards','away_receiving_tds','away_receiving_epa','away_def_sacks','away_def_interceptions',
+    'away_avg_attempts', 'away_avg_completions', 'away_avg_passing_yards', 'away_avg_passing_tds', 'away_avg_passing_interceptions', 
+    'away_avg_sacks_suffered', 'away_avg_sack_fumbles', 'away_avg_passing_first_downs', 'away_avg_passing_2pt_conversions', 'away_avg_passing_epa', 
+    'away_avg_carries', 'away_avg_rushing_yards', 'away_avg_rushing_tds', 'away_avg_rushing_epa', 'away_avg_rushing_fumbles', 
+    'away_avg_rushing_first_downs', 'away_avg_receiving_epa', 'away_avg_fg_made', 'away_avg_fg_att', 'away_avg_penalty_yards', 'away_avg_pat_made', 
+    'away_avg_pat_att', 'away_avg_fumble_recovery_own',
     #Home team stats
-    'home_passing_yards','home_passing_tds','home_passing_epa','home_rushing_yards','home_rushing_tds','home_rushing_epa',
-    'home_receiving_yards','home_receiving_tds','home_receiving_epa','home_def_sacks','home_def_interceptions',
+    'home_avg_attempts', 'home_avg_completions', 'home_avg_passing_yards', 'home_avg_passing_tds', 'home_avg_passing_interceptions', 
+    'home_avg_sacks_suffered', 'home_avg_sack_fumbles', 'home_avg_passing_first_downs', 'home_avg_passing_2pt_conversions', 'home_avg_passing_epa', 
+    'home_avg_carries', 'home_avg_rushing_yards', 'home_avg_rushing_tds', 'home_avg_rushing_epa', 'home_avg_rushing_fumbles', 
+    'home_avg_rushing_first_downs', 'home_avg_receiving_epa', 'home_avg_fg_made', 'home_avg_fg_att', 'home_avg_penalty_yards', 'home_avg_pat_made', 
+    'home_avg_pat_att', 'home_avg_fumble_recovery_own'
     ]
 
     target_col = 'over_hit'
 
-    X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_data, feature_columns, target_col)
+    X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_train_data, merged_test_data, feature_columns, target_col)
 
     input_features = X_train_t.shape[1]
 

@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 import torch
 
 #Merge game data with team statistics for both home and away teams
-def merge_data(file_name='games_test.csv'):
+def merge_data(file_name='games_train.csv'):
     '''
     Returns a DataFrame merging game data with team statistics for both home and away teams.
     '''

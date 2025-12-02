@@ -4,33 +4,36 @@ import copy
 
 class FeedForwardNetWithDropout(nn.Module):
 
-    def __init__(self, input_size, dropout_rate): #dropout_rate between 0 and 1 (0.1, 0.3, 0.5)
+    def __init__(self, input_size, dropout_rate): #dropout_rate between 0 and 1
         super(FeedForwardNetWithDropout, self).__init__()
         
-        self.fc1 = nn.Linear(input_size, 128) #first hidden layer with 64 neurons
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout_rate)
-        self.fc2 = nn.Linear(128, 64) #second hidden layer with 32 neurons
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(dropout_rate)
-        self.fc3 = nn.Linear(64, 32)
-        self.relu3 = nn.ReLU()
-        self.dropout3 = nn.Dropout(dropout_rate)
-        self.fc4 = nn.Linear(32, 1)  #output layer
-        self.sigmoid = nn.Sigmoid()
+
+        self.main = nn.Sequential(
+            #Layer 1
+            nn.Linear(input_size, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            
+            #Layer 2
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            
+            #Layer 3
+            nn.Linear(32, 16),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            
+            #Output Layer
+            nn.Linear(16, 1),
+            nn.Sigmoid()
+        )
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu1(x)
-        x = self.dropout1(x)
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.dropout2(x)
-        x = self.fc3(x)
-        x = self.relu3(x)
-        x = self.dropout3(x)
-        x = self.fc4(x)
-        return self.sigmoid(x)
+        return self.main(x)
 
 def calculate_accuracy(model, X, y):
     model.eval()  #Same accuracy calculation as before
