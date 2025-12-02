@@ -48,6 +48,7 @@ def get_rolling_stats(enriched_df, window=5):
     available_cols = [c for c in cols_to_roll if c in enriched_df.columns]
     
     #Sort by team and game week to ensure correct rolling calculation
+    enriched_df['week'] = enriched_df['week'].astype(int)
     enriched_df = enriched_df.sort_values(['team', 'season', 'week'])
     
     #Calculate Rolling Averages

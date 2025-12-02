@@ -35,6 +35,13 @@ if __name__ == "__main__":
 
     target_col = 'over_hit'
     #print("Available Columns:", merged_train_data.columns.tolist())
+
+    # Sanity Check: Print specific rows to manually verify shift
+    print("\n--- SANITY CHECK ---")
+    # Check a random team's Week 1, 2, and 3
+    sample_team = merged_train_data[merged_train_data['home_team'] == 'BUF'].sort_values(['season', 'week'])
+    print(sample_team[['season', 'week', 'home_team', 'home_score', 'home_avg_points_scored']].head(5))
+    print("--------------------\n")
     X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_train_data, merged_test_data, feature_columns, target_col)
 
     input_features = X_train_t.shape[1]
@@ -42,7 +49,7 @@ if __name__ == "__main__":
     DROPOUT_RATE = 0.5
     LEARNING_RATE = 0.001
     NUM_ITERATIONS = 7500
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     CHECK_EVERY = 250
     MOMENTUM = 0
     WEIGHT_DECAY = 1e-4

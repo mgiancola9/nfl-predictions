@@ -7,30 +7,17 @@ class FeedForwardNetWithDropout(nn.Module):
     def __init__(self, input_size, dropout_rate): #dropout_rate between 0 and 1
         super(FeedForwardNetWithDropout, self).__init__()
         
-
         self.main = nn.Sequential(
-            #Layer 1
-            nn.Linear(input_size, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            
-            #Layer 2
-            nn.Linear(64, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            
-            #Layer 3
-            nn.Linear(32, 16),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            
-            #Output Layer
-            nn.Linear(16, 1),
-            nn.Sigmoid()
-        )
+                    #Layer 1
+                    nn.Linear(input_size, 16),
+                    nn.BatchNorm1d(16),
+                    nn.ReLU(),
+                    nn.Dropout(dropout_rate),
+                    
+                    #Jump straight to output
+                    nn.Linear(16, 1),
+                    nn.Sigmoid()
+                )
 
     def forward(self, x):
         return self.main(x)
