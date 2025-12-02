@@ -13,18 +13,18 @@ if __name__ == "__main__":
 
     feature_columns = ['total_line','over_odds','under_odds','spread_line','away_moneyline','home_moneyline',
     'away_spread_odds','home_spread_odds','week','temp','wind','away_rest','home_rest',
+
     #Away team stats
-    'away_avg_attempts', 'away_avg_completions', 'away_avg_passing_yards', 'away_avg_passing_tds', 'away_avg_passing_interceptions', 
-    'away_avg_sacks_suffered', 'away_avg_sack_fumbles', 'away_avg_passing_first_downs', 'away_avg_passing_2pt_conversions', 'away_avg_passing_epa', 
-    'away_avg_carries', 'away_avg_rushing_yards', 'away_avg_rushing_tds', 'away_avg_rushing_epa', 'away_avg_rushing_fumbles', 
-    'away_avg_rushing_first_downs', 'away_avg_receiving_epa', 'away_avg_fg_made', 'away_avg_fg_att', 'away_avg_penalty_yards', 'away_avg_pat_made', 
-    'away_avg_pat_att', 'away_avg_fumble_recovery_own',
+    'away_avg_attempts', 'away_avg_completions', 'away_avg_passing_yards', 'away_avg_passing_tds', 'away_avg_passing_interceptions', 'away_avg_sacks_suffered', 'away_avg_sack_fumbles', 'away_avg_passing_first_downs',
+    'away_avg_passing_2pt_conversions', 'away_avg_passing_epa', 'away_avg_carries', 'away_avg_rushing_yards', 'away_avg_rushing_tds', 'away_avg_rushing_epa', 'away_avg_rushing_fumbles', 'away_avg_rushing_first_downs', 
+    'away_avg_receiving_epa', 'away_avg_fg_made', 'away_avg_fg_att', 'away_avg_penalty_yards', 'away_avg_pat_made', 'away_avg_pat_att','away_avg_fumble_recovery_own', 'away_avg_fumble_recovery_opp', 'away_avg_points_scored', 'away_avg_points_allowed', 
+    'away_avg_total_yards_allowed', 'away_avg_passing_yards_allowed', 'away_avg_rushing_yards_allowed', 'away_avg_def_interceptions_forced', 'away_avg_def_fumbles_forced',
+
     #Home team stats
-    'home_avg_attempts', 'home_avg_completions', 'home_avg_passing_yards', 'home_avg_passing_tds', 'home_avg_passing_interceptions', 
-    'home_avg_sacks_suffered', 'home_avg_sack_fumbles', 'home_avg_passing_first_downs', 'home_avg_passing_2pt_conversions', 'home_avg_passing_epa', 
-    'home_avg_carries', 'home_avg_rushing_yards', 'home_avg_rushing_tds', 'home_avg_rushing_epa', 'home_avg_rushing_fumbles', 
-    'home_avg_rushing_first_downs', 'home_avg_receiving_epa', 'home_avg_fg_made', 'home_avg_fg_att', 'home_avg_penalty_yards', 'home_avg_pat_made', 
-    'home_avg_pat_att', 'home_avg_fumble_recovery_own'
+    'home_avg_attempts', 'home_avg_completions', 'home_avg_passing_yards', 'home_avg_passing_tds', 'home_avg_passing_interceptions', 'home_avg_sacks_suffered', 'home_avg_sack_fumbles', 'home_avg_passing_first_downs',
+    'home_avg_passing_2pt_conversions', 'home_avg_passing_epa', 'home_avg_carries', 'home_avg_rushing_yards', 'home_avg_rushing_tds', 'home_avg_rushing_epa', 'home_avg_rushing_fumbles', 'home_avg_rushing_first_downs', 
+    'home_avg_receiving_epa', 'home_avg_fg_made', 'home_avg_fg_att', 'home_avg_penalty_yards', 'home_avg_pat_made', 'home_avg_pat_att','home_avg_fumble_recovery_own', 'home_avg_fumble_recovery_opp', 'home_avg_points_scored', 'home_avg_points_allowed', 
+    'home_avg_total_yards_allowed', 'home_avg_passing_yards_allowed', 'home_avg_rushing_yards_allowed', 'home_avg_def_interceptions_forced', 'home_avg_def_fumbles_forced'
     ]
 
     target_col = 'over_hit'

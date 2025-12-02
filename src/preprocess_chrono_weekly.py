@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import torch
 
@@ -26,7 +25,7 @@ def enrich_data(weekly_stats, games):
     #Now calculate 'yards_allowed' by merging opponent's offensive stats (their opffensive stats are this team's defensive stats)
     opp_cols = ['season', 'week', 'team', 'passing_yards', 'rushing_yards', 'passing_interceptions', 'rushing_fumbles']
     opp_stats = merged_df[opp_cols].copy()
-    opp_stats.columns = ['season', 'week', 'opponent', 'passing_yards_allowed', 'rushing_yards_allowed', 'passing_interceptions_forced', 'rushing_fumbles_forced']
+    opp_stats.columns = ['season', 'week', 'opponent', 'passing_yards_allowed', 'rushing_yards_allowed', 'def_interceptions_forced', 'def_fumbles_forced']
 
     final_df = merged_df.merge(opp_stats, on=['season', 'week', 'opponent'], how='left')
     final_df['total_yards_allowed'] = final_df['passing_yards_allowed'] + final_df['rushing_yards_allowed']
@@ -43,7 +42,7 @@ def get_rolling_stats(enriched_df, window=5):
         'attempts', 'completions', 'passing_yards', 'passing_tds', 'passing_interceptions', 'sacks_suffered', 'sack_fumbles', 'passing_first_downs',
         'passing_2pt_conversions', 'passing_epa', 'carries', 'rushing_yards', 'rushing_tds', 'rushing_epa', 'rushing_fumbles', 'rushing_first_downs', 
         'receiving_epa', 'fg_made', 'fg_att', 'penalty_yards', 'pat_made', 'pat_att','fumble_recovery_own', 'fumble_recovery_opp', 'points_scored', 'points_allowed', 
-        'total_yards_allowed', 'passing_yards_allowed', 'rushing_yards_allowed', 'passing_interceptions_forced', 'rushing_fumbles_forced']
+        'total_yards_allowed', 'passing_yards_allowed', 'rushing_yards_allowed', 'def_interceptions_forced', 'def_fumbles_forced']
     
     #Verify which columns actually exist in the dataframe before trying to roll them
     available_cols = [c for c in cols_to_roll if c in enriched_df.columns]
