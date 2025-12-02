@@ -28,7 +28,7 @@ if __name__ == "__main__":
     ]
 
     target_col = 'over_hit'
-
+    print("Available Columns:", merged_train_data.columns.tolist())
     X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_train_data, merged_test_data, feature_columns, target_col)
 
     input_features = X_train_t.shape[1]

@@ -84,16 +84,16 @@ def merge_data(file_name='games_train.csv'):
     raw_stats = pd.concat(all_stats_files, ignore_index=True)
 
     #Enrich stats with scores and opponent defensive data
-    print("Enriching stats with scores and opponent data...")
+    #print("Enriching stats with scores and opponent data...")
     enriched_stats = enrich_data(raw_stats, games)
     
     #Calculate Rolling Averages
-    print("Calculating rolling averages...")
+    #print("Calculating rolling averages...")
     rolling_features = get_rolling_stats(enriched_stats, window=5)
     
     #Merge Home Team Stats
     #Match Game's (Season, Week, HomeTeam) with Stats' (Season, Week, Team)
-    print("Merging home team data...")
+    #print("Merging home team data...")
     games = games.merge(
         rolling_features.add_prefix('home_'),
         left_on=['season', 'week', 'home_team'],
@@ -102,7 +102,7 @@ def merge_data(file_name='games_train.csv'):
     )
     
     #Merge Away Team Stats
-    print("Merging away team data...")
+    #print("Merging away team data...")
     games = games.merge(
         rolling_features.add_prefix('away_'),
         left_on=['season', 'week', 'away_team'],
@@ -157,5 +157,5 @@ def preprocess(train_df, test_df, feature_columns, target_column, scaler=None):
 if __name__ == "__main__":
     merged_train_data = merge_data("games_train.csv")
     merged_train_data.head(100).to_csv("merged_train_data_sample.csv", index=False)
-    print("Data merged and preprocessed.")
+    #print("Data merged and preprocessed.")
                        
