@@ -7,7 +7,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 
+
 if __name__ == "__main__":
+
+    #Set seeds for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
+
     merged_train_data = preprocess.merge_data("games_train.csv")
     merged_test_data = preprocess.merge_data("games_test.csv")
 
@@ -28,16 +34,18 @@ if __name__ == "__main__":
     ]
 
     target_col = 'over_hit'
-    print("Available Columns:", merged_train_data.columns.tolist())
+    #print("Available Columns:", merged_train_data.columns.tolist())
     X_train_t, X_val_t, y_train_t, y_val_t, scaler = preprocess.preprocess(merged_train_data, merged_test_data, feature_columns, target_col)
 
     input_features = X_train_t.shape[1]
 
     DROPOUT_RATE = 0.5
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     NUM_ITERATIONS = 7500
-    BATCH_SIZE = 16
+    BATCH_SIZE = 64
     CHECK_EVERY = 250
+    MOMENTUM = 0
+    WEIGHT_DECAY = 1e-4
 
 
     print(f"\nTraining with learning rate: {LEARNING_RATE}, iterations: {NUM_ITERATIONS}, dropout rate: {DROPOUT_RATE}\n")
@@ -49,7 +57,7 @@ if __name__ == "__main__":
     for _ in range(1):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
-        optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+        optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY) #Using AdamW optimizer can choose others if wanted
 
         saved_model, train_losses, val_losses, train_accs, val_accs, iterations, best_val_loss = NN_dropout.train_with_minibatch_dropout(
             model, criterion, optimizer,

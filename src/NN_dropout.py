@@ -36,7 +36,7 @@ class FeedForwardNetWithDropout(nn.Module):
         return self.main(x)
 
 def calculate_accuracy(model, X, y):
-    model.eval()  #Same accuracy calculation as before
+    model.eval()
 
     with torch.no_grad():
         outputs = model(X)                                   #Model predictions (probabilities)
@@ -44,6 +44,7 @@ def calculate_accuracy(model, X, y):
         correct = (predictions == y).float().sum().item()    #Count correct predictions
         accuracy = correct / y.size(0)                       #Divide by total number of samples
 
+    model.train()
     return accuracy
 
 def calculate_full_loss(model, criterion, X, y):
