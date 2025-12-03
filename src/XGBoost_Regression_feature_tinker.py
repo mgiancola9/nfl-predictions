@@ -17,6 +17,8 @@ FEATURE_COLUMNS = [
     'home_avg_points_scored', 'away_avg_points_allowed'
 ]
 
+#For future: Injury report. Find a way to get wind / temperature data automatically. Auto fetch the stats and calcuulate rolling averages.
+
 def run_xgboost_regression():
     # 1. Load Data
     print("Loading data...")

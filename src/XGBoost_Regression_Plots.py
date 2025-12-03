@@ -43,12 +43,14 @@ def run_analysis():
     # Note: Reduced n_estimators slightly to prevent total overfitting if learning rate is low
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
-        n_estimators=1000,
-        learning_rate=0.01,
-        max_depth=3,
+        n_estimators=2000,
+        learning_rate=0.005,
+        max_depth=4,
+        min_child_weight=3,
         subsample=0.8,
         colsample_bytree=0.8,
         random_state=42,
+        n_jobs=-1,
         early_stopping_rounds=50
     )
 
@@ -79,7 +81,7 @@ def run_analysis():
     plt.plot(x_axis, results['validation_0']['rmse'], label='Train')
     plt.plot(x_axis, results['validation_1']['rmse'], label='Validation')
     plt.legend()
-    plt.ylabel('RMSE (Points)')
+    plt.ylabel('rmse (Points)')
     plt.xlabel('Iterations')
     plt.title('XGBoost Learning Curve: Training vs Validation Loss')
     plt.grid(True)
