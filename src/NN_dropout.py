@@ -8,13 +8,19 @@ class FeedForwardNetWithDropout(nn.Module):
         super(FeedForwardNetWithDropout, self).__init__()
         
         self.main = nn.Sequential(
-                    #Layer 1
-                    nn.Linear(input_size, 16),
+                    # Layer 1: Compress 60 features to 32
+                    nn.Linear(input_size, 32),
+                    nn.BatchNorm1d(32),
+                    nn.ReLU(),
+                    nn.Dropout(dropout_rate),
+                    
+                    # Layer 2: Refine to 16
+                    nn.Linear(32, 16),
                     nn.BatchNorm1d(16),
                     nn.ReLU(),
                     nn.Dropout(dropout_rate),
                     
-                    #Jump straight to output
+                    # Output Layer
                     nn.Linear(16, 1),
                     nn.Sigmoid()
                 )
@@ -88,7 +94,9 @@ def train_with_minibatch_dropout(model, criterion, optimizer, X_train, y_train, 
                 best_model_state = copy.deepcopy(model.state_dict())
                 early_stop_iteration = i
 
-    # At end, restore and return best model and its metrics
+            model.train() #ensure model back in train mode
+    
+    #At end, restore and return best model and its metrics
     model.load_state_dict(best_model_state)
     print(f"Early stopping at iteration {early_stop_iteration} with best val loss {best_val_loss:.4f}")
     best_val_acc = calculate_accuracy(model, X_val, y_val)
