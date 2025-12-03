@@ -23,14 +23,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 # Columns to exclude from training features (Metadata + Leaks)
-# 'fav_cover' is our target variable.
+# NOTE: We dropped 'spread_line' in preprocessing and created 'home_line'.
+# We want to KEEP 'home_line' as a feature, so do not add it here.
 DROP_COLS = [
     "season", "week", "game_id", "home_team", "away_team", 
-    "gameday", "weekday", "gametime", "fav_cover",
-    "spread_line", "total_line", "location", "div_game", 
+    "gameday", "weekday", "gametime", "home_cover", "fav_cover", # Targets
+    "total_line", "location", "div_game", 
     "roof", "surface", "temp", "wind" 
-    # Note: You can un-comment specific context features (like 'wind') 
-    # if you want the model to use them.
 ]
 
 def load_data():
@@ -53,7 +52,8 @@ def get_features_and_target(df):
     feature_cols = [c for c in df.columns if c not in DROP_COLS]
     
     X = df[feature_cols].copy()
-    y = df["fav_cover"].copy()
+    # TARGET IS NOW 'home_cover'
+    y = df["home_cover"].copy()
     
     return X, y
 
@@ -86,7 +86,6 @@ def train_predict_walk_forward(train_base, test_season):
         X_test, _ = get_features_and_target(test_data)
         
         # 4. Train Model
-        #    Using standard XGBoost parameters - we can tune these later!
         model = XGBClassifier(
             n_estimators=100,
             learning_rate=0.05,
@@ -100,20 +99,23 @@ def train_predict_walk_forward(train_base, test_season):
         model.fit(X_train, y_train)
         
         # 5. Predict
-        #    [0] is prob of class 0 (Underdog covers), [1] is prob of class 1 (Favorite covers)
+        #    [0] is prob of Home NOT Covering, [1] is prob of Home Covering
         probs = model.predict_proba(X_test)[:, 1]
         
         # 6. Store Predictions
-        test_data["pred_prob"] = probs
-        test_data["pred_class"] = (probs >= 0.5).astype(int)
+        test_data["pred_prob_home"] = probs
         
-        # Calculate 'Edge' (Confidence - 50%)
-        # Example: Prob 0.60 -> Edge 0.10
-        test_data["edge"] = np.abs(test_data["pred_prob"] - 0.5)
+        # Decision Logic:
+        # If Prob(Home Cover) > 0.50 -> Predict 1 (Home Cover)
+        # Else -> Predict 0 (Away Cover)
+        test_data["pred_pick"] = (probs >= 0.50).astype(int)
+        
+        # Edge Calculation
+        test_data["edge"] = np.abs(test_data["pred_prob_home"] - 0.5)
         
         all_predictions.append(test_data)
         
-        print(f"   Week {current_week}: Trained on {len(train_data)} games. Predicted {len(test_data)} games.")
+        print(f"   Week {current_week}: Trained on {len(train_data)} games.")
 
     if not all_predictions:
         return pd.DataFrame()
@@ -126,14 +128,14 @@ def evaluate_performance(results_df):
         print("No predictions were made.")
         return
 
-    y_true = results_df["fav_cover"]
-    y_pred = results_df["pred_class"]
+    y_true = results_df["home_cover"]
+    y_pred = results_df["pred_pick"]
     
     acc = accuracy_score(y_true, y_pred)
-    brier = brier_score_loss(y_true, results_df["pred_prob"])
+    brier = brier_score_loss(y_true, results_df["pred_prob_home"])
     
     print("\n" + "="*40)
-    print(f"RESULTS: 2025 Walk-Forward Validation")
+    print(f"RESULTS: 2025 Walk-Forward (Target: Home Cover)")
     print("="*40)
     print(f"Total Games Predicted: {len(results_df)}")
     print(f"Overall Accuracy:      {acc:.2%}")
@@ -141,19 +143,18 @@ def evaluate_performance(results_df):
     print("-" * 40)
     
     # Profitability Check at different confidence levels
-    thresholds = [0.50, 0.53, 0.55]
+    thresholds = [0.50, 0.525, 0.55]
     
     for t in thresholds:
         # Filter for games where model confidence is above threshold
-        # Edge of 0.03 means probability > 0.53 OR < 0.47
         min_edge = t - 0.5
         confident_picks = results_df[results_df["edge"] >= min_edge]
         
         if len(confident_picks) > 0:
-            conf_acc = accuracy_score(confident_picks["fav_cover"], confident_picks["pred_class"])
-            print(f"Accuracy at >{t:.0%} confidence ({len(confident_picks)} games): {conf_acc:.2%}")
+            conf_acc = accuracy_score(confident_picks["home_cover"], confident_picks["pred_pick"])
+            print(f"Accuracy at >{t:.1%} confidence ({len(confident_picks)} games): {conf_acc:.2%}")
         else:
-            print(f"Accuracy at >{t:.0%} confidence: No games found")
+            print(f"Accuracy at >{t:.1%} confidence: No games found")
 
 def main():
     # 1. Load Data
