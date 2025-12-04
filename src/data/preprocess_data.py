@@ -118,7 +118,7 @@ def main():
     train_df.to_csv(DATA_PROCESSED_DIR / "train_processed.csv", index=False)
     test_df.to_csv(DATA_PROCESSED_DIR / "test_processed.csv", index=False)
     
-    print(f"\n✅ Processing Complete.")
+    print(f"\n Processing Complete.")
     print(f"   Training Data: {len(train_df)} rows")
     print(f"   Testing Data:  {len(test_df)} rows")
 

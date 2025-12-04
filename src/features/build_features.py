@@ -50,7 +50,7 @@ def load_rolling_stats() -> pd.DataFrame:
 def load_injury_features() -> pd.DataFrame:
     path = DATA_INTERIM_DIR / "injury_features.csv"
     if not path.exists():
-        print(f"⚠️ Warning: Missing injury features: {path}. Proceeding without injuries.")
+        print(f" Warning: Missing injury features: {path}. Proceeding without injuries.")
         return pd.DataFrame()
     return pd.read_csv(path)
 
@@ -208,7 +208,7 @@ def main():
     out_path = DATA_INTERIM_DIR / "team_strengths_features.csv"
     final_df.to_csv(out_path, index=False)
     
-    print(f"\n✅ Successfully built features: {out_path}")
+    print(f"\n Successfully built features: {out_path}")
     print(f"   Rows: {len(final_df)}")
     print(f"   Key Features: {[c for c in final_df.columns if 'delta' in c]}")
 

@@ -157,7 +157,7 @@ def main():
         plot_confidence_tiers(df)
         plot_bankroll_simulation(df)
         plot_smoothed_accuracy(df)
-        print("\n✅ New figures generated in reports/figures/")
+        print("\n New figures generated in reports/figures/")
     except Exception as e:
         print(e)
 

@@ -95,7 +95,7 @@ def get_combined_injuries(start_year, end_year):
                 inj = inj[['season', 'week', 'team', 'player_id', 'full_name', 'report_status']]
                 all_frames.append(inj)
         except Exception as e:
-            print(f"   ⚠️ API fetch failed: {e}")
+            print(f" API fetch failed: {e}")
 
     # --- 2. Local Master File (2025) ---
     if end_year >= 2025:
@@ -105,13 +105,13 @@ def get_combined_injuries(start_year, end_year):
             local_path = Path("injuries_2025.csv") # Check root if just uploaded
             
         if local_path.exists():
-            print("   ✅ Loading local 'injuries_2025.csv'...")
+            print(" Loading local 'injuries_2025.csv'...")
             inj_2025 = pd.read_csv(local_path)
             if 'player_id' not in inj_2025.columns:
                 inj_2025['player_id'] = np.nan 
             all_frames.append(inj_2025)
         else:
-            print("   ❌ Missing 'injuries_2025.csv'.")
+            print(" Missing 'injuries_2025.csv'.")
 
     if not all_frames:
         return pd.DataFrame()
@@ -197,7 +197,7 @@ def main():
     output_path = DATA_INTERIM_DIR / "injury_features.csv"
     vam_lost_df.to_csv(output_path, index=False)
     
-    print(f"\n✅ Saved injury features to: {output_path}")
+    print(f"\n Saved injury features to: {output_path}")
     print(f"   Rows: {len(vam_lost_df)}")
     
     # Validation Check

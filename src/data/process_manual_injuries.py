@@ -29,7 +29,7 @@ def process_files():
     
     csv_files = list(INPUT_DIR.glob("*.csv"))
     if not csv_files:
-        print(f"❌ No files found in {INPUT_DIR}")
+        print(f" No files found in {INPUT_DIR}")
         return
 
     all_data = []
@@ -53,7 +53,7 @@ def process_files():
                 df = pd.read_csv(file_path, header=1)
             
             if 'Player' not in df.columns:
-                print("⚠️ Skipping (Could not find 'Player' column)")
+                print(" Skipping (Could not find 'Player' column)")
                 continue
 
             # 3. Identify Week Columns
@@ -61,7 +61,7 @@ def process_files():
             week_cols = [c for c in df.columns if str(c).lower().startswith('week')]
             
             if not week_cols:
-                print("⚠️ Skipping (No 'Week' columns found)")
+                print(" Skipping (No 'Week' columns found)")
                 continue
 
             # 4. Melt to Long Format (Player | Week | Status)
@@ -89,10 +89,9 @@ def process_files():
             melted = melted.rename(columns={"Player": "full_name"})
             
             all_data.append(melted)
-            print("✅")
             
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f" Error: {e}")
 
     if all_data:
         # 6. Save Master File
@@ -112,9 +111,9 @@ def process_files():
         out_cols = ["season", "week", "team", "full_name", "report_status"]
         final_df[out_cols].to_csv(OUTPUT_FILE, index=False)
         
-        print(f"\n✅ SUCCESS: Combined {len(final_df)} injuries into {OUTPUT_FILE}")
+        print(f"\n SUCCESS: Combined {len(final_df)} injuries into {OUTPUT_FILE}")
     else:
-        print("\n❌ Failed to aggregate any data.")
+        print("\n Failed to aggregate any data.")
 
 if __name__ == "__main__":
     process_files()

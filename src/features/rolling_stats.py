@@ -31,12 +31,12 @@ def load_local_files(start_year, end_year):
                 break
         
         if file_path:
-            print(f"   ✅ Loading {year}: {file_path.name}")
+            print(f" Loading {year}: {file_path.name}")
             df = pd.read_csv(file_path)
             df = process_team_file(df)
             all_frames.append(df)
         else:
-            print(f"   ⚠️ Warning: No file found for {year}. Skipping.")
+            print(f" Warning: No file found for {year}. Skipping.")
             
     if not all_frames:
         raise FileNotFoundError("No weekly team files were loaded!")
@@ -95,7 +95,7 @@ def calculate_rolling_windows(df):
         how='left'
     )
     
-    # --- 2. CALCULATE ROLLING AVERAGES ---
+    # CALCULATE ROLLING AVERAGES
     df = df.sort_values(['season', 'team', 'week'])
     
     # Metrics to roll: Offense (generated) and Defense (allowed)
@@ -110,7 +110,7 @@ def calculate_rolling_windows(df):
         df[col_name] = df.groupby(['season', 'team'])[m]\
                          .transform(lambda x: x.expanding().mean().shift(1))
 
-    # --- 3. COMPOSITE STRENGTH SCORES ---
+    # COMPOSITE STRENGTH SCORES
     
     # Offense Strength (Higher is Better)
     df['offense_strength_entering'] = (
@@ -139,7 +139,7 @@ def main():
     output_path = DATA_INTERIM_DIR / "team_strengths_rolling.csv"
     rolling_df.to_csv(output_path, index=False)
     
-    print(f"\n✅ Saved rolling stats to: {output_path}")
+    print(f"\n Saved rolling stats to: {output_path}")
     print(f"   Rows: {len(rolling_df)}")
     print(f"   Sample (Defense Columns):")
     print(rolling_df[['season', 'week', 'team', 'defense_strength_entering']].dropna().head(3))
