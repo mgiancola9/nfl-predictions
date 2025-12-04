@@ -54,7 +54,7 @@ if __name__ == "__main__":
     train_losses_all_runs = []
     val_losses_all_runs = [] #loss for coinflip is 0.693. Want around 0.67 or lower which corresponds to about 60% accuracy
 
-    for _ in range(10):
+    for _ in range(1):
         model = NN_dropout.FeedForwardNetWithDropout(input_size=input_features, dropout_rate=DROPOUT_RATE)
         criterion = nn.BCELoss()
         optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY) #Using AdamW optimizer can choose others if wanted
