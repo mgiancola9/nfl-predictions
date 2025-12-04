@@ -126,7 +126,7 @@ def run_analysis():
     edges = y_pred - vegas_lines
     recommendations = []
     
-    # You can tune this "no bet" zone. Currently set to strict > 0.
+    # Currently set to strict > 0.
     for edge in edges:
         if edge > 0:
             recommendations.append("OVER")

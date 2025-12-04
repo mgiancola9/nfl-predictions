@@ -60,7 +60,7 @@ def get_rolling_stats(enriched_df, window=5):
 
 def merge_data(file_name='games_train.csv'):
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATA_DIR = os.path.join(BASE_DIR, 'Data')
+    DATA_DIR = os.path.join(BASE_DIR, 'Data_Total')
     games = pd.read_csv(os.path.join(DATA_DIR, file_name))
     
     all_stats_files = []
