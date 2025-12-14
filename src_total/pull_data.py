@@ -43,7 +43,7 @@ def fetch_team_stats():
     print("Fetching Weekly Team Stats...")
     
     # The nflverse URL pattern for team stats
-    url_template = "https://github.com/nflverse/nflverse-data/releases/download/team_stats/team_stats_{season}.csv"
+    url_template = "https://github.com/nflverse/nflverse-data/releases/download/team_stats/stats_team_week_{season}.csv"
     
     for season in SEASONS_TO_FETCH:
         try:

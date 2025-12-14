@@ -18,7 +18,7 @@ def enrich_data(weekly_stats, games):
     scores_df = pd.concat([home_df, away_df], ignore_index=True)
 
     # Merge scores with weekly stats
-    merged_df = weekly_stats.merge(scores_df, on=['season', 'week', 'team'], how='inner')
+    merged_df = weekly_stats.merge(scores_df, on=['season', 'week', 'team'], how='right')
 
     # Now calculate 'yards_allowed' by merging opponent's offensive stats
     opp_cols = ['season', 'week', 'team', 'passing_yards', 'rushing_yards', 'passing_interceptions', 'passing_epa', 'rushing_epa']
