@@ -6,7 +6,7 @@ import os
 
 # --- CONFIGURATION ---
 FEATURE_COLUMNS = [
-    'total_line', 'spread_line', 'week', 'temp', 'wind', 'away_rest', 'home_rest',
+    'total_line', 'spread_line', 'week', 'weather_temp', 'weather_wind_mph', 'away_rest', 'home_rest',
     'away_avg_passing_epa', 'home_avg_passing_epa_allowed',
     'away_avg_rushing_epa', 'home_avg_rushing_epa_allowed',
     'home_avg_passing_epa', 'away_avg_passing_epa_allowed',
@@ -84,7 +84,7 @@ def run_xgboost_regression():
     print(results.to_string(index=False))
     
     # Optional: Save to CSV
-    # results.to_csv("upcoming_predictions.csv", index=False)
+    results.to_csv("upcoming_predictions.csv", index=False)
 
 if __name__ == "__main__":
     run_xgboost_regression()
