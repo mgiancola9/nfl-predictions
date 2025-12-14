@@ -1,10 +1,7 @@
 import pandas as pd
-import nfl_data_py as nfl
 import requests
 import time
 import os
-from datetime import datetime, timedelta
-import pytz
 
 # ==============================================================================
 # CONFIGURATION
@@ -12,153 +9,110 @@ import pytz
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, 'Data_Total', 'games_2016_2025.csv')
 
-def get_stadium_coords():
-    """
-    Fetches stadium details including Latitude and Longitude.
-    """
-    print("Fetching stadium coordinates...")
-    try:
-        stadiums = nfl.import_stadiums()
-        # Keep only what we need
-        stadiums = stadiums[['stadium_id', 'stadium_name', 'stadium_latitude', 'stadium_longitude', 'stadium_roof']]
-        return stadiums
-    except Exception as e:
-        print(f"Error fetching stadiums: {e}")
-        return pd.DataFrame()
+# HARDCODED COORDINATES (Lat, Lon)
+TEAM_COORDS = {
+    'ARI': (33.5276, -112.2626), 'ATL': (33.7554, -84.4008), 'BAL': (39.2780, -76.6227),
+    'BUF': (42.7737, -78.7870),  'CAR': (35.2258, -80.8528), 'CHI': (41.8623, -87.6167),
+    'CIN': (39.0955, -84.5161),  'CLE': (41.5061, -81.6995), 'DAL': (32.7473, -97.0945),
+    'DEN': (39.7439, -105.0201), 'DET': (42.3400, -83.0456), 'GB':  (44.5013, -88.0622),
+    'HOU': (29.6847, -95.4107),  'IND': (39.7601, -86.1639), 'JAX': (30.3240, -81.6375),
+    'KC':  (39.0489, -94.4839),  'LAC': (33.9534, -118.3390), 'LA':  (33.9534, -118.3390),
+    'LAR': (33.9534, -118.3390), 'LV':  (36.0909, -115.1833), 'MIA': (25.9580, -80.2389),
+    'MIN': (44.9735, -93.2575),  'NE':  (42.0909, -71.2643), 'NO':  (29.9511, -90.0812),
+    'NYG': (40.8135, -74.0745),  'NYJ': (40.8135, -74.0745), 'PHI': (39.9008, -75.1675),
+    'PIT': (40.4468, -80.0158),  'SEA': (47.5952, -122.3316), 'SF':  (37.4032, -121.9698),
+    'TB':  (27.9759, -82.5033),  'TEN': (36.1665, -86.7713), 'WAS': (38.9077, -76.8645)
+}
+
+NEUTRAL_STADIUMS = {
+    'Tottenham Hotspur Stadium': (51.6042, -0.0662),
+    'Wembley Stadium': (51.5560, -0.2795),
+    'Allianz Arena': (48.2188, 11.6247),
+    'Estadio Azteca': (19.3029, -99.1505),
+    'Deutsche Bank Park': (50.0686, 8.6455),
+    'Santiago Bernabeu': (40.4530, -3.6883),
+    'Corinthians Arena': (-23.5453, -46.4742)
+}
+
+def get_coords(row):
+    if str(row.get('location', '')).title() == 'Neutral':
+        stadium_name = str(row.get('stadium', ''))
+        for name, coords in NEUTRAL_STADIUMS.items():
+            if name in stadium_name: return coords
+        return None, None
+    
+    team = row['home_team']
+    return TEAM_COORDS.get(team, (None, None))
 
 def get_realtime_weather(lat, lon, game_time_str):
-    """
-    Calls Open-Meteo API for a specific location and time.
-    """
     try:
-        # Convert game time string to datetime object
-        # Assuming game_time_str is in format 'YYYY-MM-DD HH:MM:SS' (UTC)
-        # We need to handle timezones carefully. nflverse gameday/gametime usually implies ET.
-        
-        # Open-Meteo uses ISO8601. We'll request the forecast for the specific hour.
         url = "https://api.open-meteo.com/v1/forecast"
-        
         params = {
-            "latitude": lat,
-            "longitude": lon,
+            "latitude": lat, "longitude": lon,
             "hourly": "temperature_2m,wind_speed_10m",
-            "temperature_unit": "fahrenheit",
-            "wind_speed_unit": "mph",
-            "timezone": "America/New_York", # Request data in ET to match nflverse usually
-            "forecast_days": 16 # Ensure we can see far enough ahead
+            "temperature_unit": "fahrenheit", "wind_speed_unit": "mph",
+            "timezone": "America/New_York", "forecast_days": 16
         }
-
         response = requests.get(url, params=params)
         data = response.json()
-        
-        if 'hourly' not in data:
-            return None, None
+        if 'hourly' not in data: return None, None
 
-        # Parse the response time list to find the closest hour to kickoff
-        # This is a simplified lookup. For production, ensure datetime alignment is precise.
-        # Here we assume the game is happening "today" or "soon" relative to the API call.
-        
-        # Finds the index in the API response that matches the game hour
-        # Note: In a real 'production' run 1 hour before game, you just grab the 'current' weather or index 0.
-        # But since we might run this Tuesday for Sunday games, we need to match the time.
-        
-        target_hour = game_time_str.split(':')[0] # simple hour extraction
-        
-        # For simplicity in this script, we'll take the weather at the *start* of the forecast 
-        # matching the game date, or just specific logic if you run it immediately before games.
-        
-        # ACTUAL LOGIC: Match the date and hour
-        # We'll just grab the index corresponding to the game hour if available.
-        # If the game is far out, this might need adjustment, but for <7 days it's fine.
-        
-        # Let's fallback to "current_weather=true" if running 1 hour before
-        # But since you might run this days ahead, we iterate.
-        
+        target_iso = game_time_str.replace(" ", "T")[:13]
         times = data['hourly']['time']
-        temps = data['hourly']['temperature_2m']
-        winds = data['hourly']['wind_speed_10m']
-        
-        # Simple match: Find the string in 'times' that looks like our game date/hour
-        # API returns: "2025-10-14T13:00"
-        # We want to match that format.
-        target_iso = game_time_str.replace(" ", "T")[:13] # e.g. "2025-10-14T13"
-        
-        found_idx = -1
         for i, t in enumerate(times):
             if target_iso in t:
-                found_idx = i
-                break
-        
-        if found_idx != -1:
-            return temps[found_idx], winds[found_idx]
-        else:
-            # Fallback: if we can't find exact hour, return middle of day or None
-            return None, None
-
-    except Exception as e:
-        print(f"API Error: {e}")
+                return data['hourly']['temperature_2m'][i], data['hourly']['wind_speed_10m'][i]
+        return None, None
+    except Exception:
         return None, None
 
 def update_games_weather():
+    if not os.path.exists(DATA_PATH):
+        print("Run pull_data.py first!")
+        return
+
     print(f"Loading games from {DATA_PATH}...")
     games = pd.read_csv(DATA_PATH)
-    stadiums = get_stadium_coords()
+
+    # ---------------------------------------------------------
+    # PART 1: GLOBAL DOME STANDARDIZATION (Past & Future)
+    # ---------------------------------------------------------
+    # Apply to ALL rows where roof is dome/closed/fixed
+    # This overwrites any existing data with the standard 70F/0mph
+    dome_mask = games['roof'].astype(str).str.lower().isin(['dome', 'closed', 'fixed'])
     
-    # Filter for future games (no score yet)
-    # We create a mask so we can update the original dataframe
-    future_mask = games['home_score'].isna()
+    games.loc[dome_mask, 'weather_temp'] = 70
+    games.loc[dome_mask, 'weather_wind_mph'] = 0
+    
+    print(f"Standardized {dome_mask.sum()} dome/closed games (past & future) to 70F/0mph.")
+
+    # ---------------------------------------------------------
+    # PART 2: UPDATE FUTURE OUTDOOR GAMES
+    # ---------------------------------------------------------
+    future_mask = games['home_score'].isna() & ~dome_mask
     games_to_update = games[future_mask].copy()
     
     if games_to_update.empty:
-        print("No upcoming games found to update.")
-        return
+        print("No upcoming outdoor games found to update.")
+    else:
+        print(f"Updating weather for {len(games_to_update)} upcoming outdoor games...")
 
-    print(f"Found {len(games_to_update)} upcoming games. Updating weather...")
+        for idx, row in games_to_update.iterrows():
+            lat, lon = get_coords(row)
+            if lat is None: continue
 
-    # Merge coordinates into the temporary df
-    # nflverse games file uses 'stadium_id' which matches nfl_data_py stadiums
-    games_to_update = games_to_update.merge(stadiums[['stadium_id', 'stadium_latitude', 'stadium_longitude', 'stadium_roof']], 
-                                            on='stadium_id', how='left')
-
-    count = 0
-    for idx, row in games_to_update.iterrows():
-        # Skip if indoors (Dome/Closed) - set to standard indoor weather
-        roof = str(row['stadium_roof']).lower()
-        if roof in ['dome', 'closed', 'fixed']:
-            games.at[idx, 'weather_temp'] = 70
-            games.at[idx, 'weather_wind_mph'] = 0
-            continue
-
-        # If outdoors, call API
-        # Construct approximate datetime string from 'gameday' and 'gametime'
-        # nflverse gametime is usually "HH:MM", gameday is "YYYY-MM-DD"
-        game_ts = f"{row['gameday']} {row['gametime']}:00"
-        
-        lat = row['stadium_latitude']
-        lon = row['stadium_longitude']
-        
-        if pd.isna(lat) or pd.isna(lon):
-            continue
-
-        temp, wind = get_realtime_weather(lat, lon, game_ts)
-        
-        if temp is not None:
-            # Update the MAIN dataframe using the index
-            # Note: We must map back to the original dataframe's index
-            original_idx = games_to_update.index[count] # This might be tricky if indices reset
-            # Safer way: Iterate the original games df where mask is true
+            gametime = str(row.get('gametime', ''))
+            if pd.isna(gametime) or gametime == 'nan': continue
             
-            # Let's use the 'game_id' to update the main DF to be safe
-            games.loc[games['game_id'] == row['game_id'], 'weather_temp'] = temp
-            games.loc[games['game_id'] == row['game_id'], 'weather_wind_mph'] = wind
-            print(f"Updated {row['game_id']}: {temp}F, {wind}mph")
+            game_ts = f"{row['gameday']} {gametime}:00"
+            temp, wind = get_realtime_weather(lat, lon, game_ts)
             
-            # Respect API limits (Open-Meteo is generous but let's be nice)
-            time.sleep(0.2)
-        
-        count += 1
+            if temp is not None:
+                games.loc[games['game_id'] == row['game_id'], 'weather_temp'] = temp
+                games.loc[games['game_id'] == row['game_id'], 'weather_wind_mph'] = wind
+                print(f"Updated {row['home_team']} vs {row['away_team']}: {temp}F")
+                time.sleep(0.2)
 
-    # Save back
     games.to_csv(DATA_PATH, index=False)
     print("Weather update complete. Saved to CSV.")
 
