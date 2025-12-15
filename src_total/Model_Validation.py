@@ -17,15 +17,25 @@ MASTER_DATA_FILE = "games_2016_2025.csv"
 TEST_SEASONS = [2024, 2025] 
 
 FEATURE_COLUMNS = [
-    'total_line', 'spread_line', 'week', 'weather_temp', 'weather_wind_mph', # Updated names
+    'total_line', 'spread_line', 'week', 'weather_temp', 'weather_wind_mph',
     'away_rest', 'home_rest',
+    
+    # Efficiency Features
     'away_avg_passing_epa', 'home_avg_passing_epa_allowed',
     'away_avg_rushing_epa', 'home_avg_rushing_epa_allowed',
     'home_avg_passing_epa', 'away_avg_passing_epa_allowed',
     'home_avg_rushing_epa', 'away_avg_rushing_epa_allowed',
+    
+    # Scoring Features
     'away_avg_points_scored', 'home_avg_points_allowed',
-    'home_avg_points_scored', 'away_avg_points_allowed'
+    'home_avg_points_scored', 'away_avg_points_allowed',
 ]
+
+    # --- NEW PACE FEATURES ---
+    # How fast does the Away team play? vs How fast does Home defense force you to play?
+#    'away_avg_plays', 'home_avg_plays_allowed',
+#    'home_avg_plays', 'away_avg_plays_allowed'
+#]
 
 TARGET_COL = 'actual_total'
 
@@ -33,23 +43,18 @@ def run_validation_suite():
     print("--- STARTING VALIDATION SUITE ---")
     
     # 1. LOAD MASTER DATA
-    # We use the preprocessor to merge the weekly stats into the games file
     print(f"Loading and enriching {MASTER_DATA_FILE}...")
     full_data = preprocess.merge_data(MASTER_DATA_FILE)
     
     # Calculate Target
     full_data[TARGET_COL] = full_data['home_score'] + full_data['away_score']
     
-    # Filter out games that haven't happened yet (for validation, we need scores)
+    # Filter out games that haven't happened yet
     valid_data = full_data.dropna(subset=[TARGET_COL])
     
     print(f"Total Completed Games with Data: {len(valid_data)}")
 
     # 2. DYNAMIC TRAIN/TEST SPLIT
-    # Instead of static files, we split by season.
-    # Train: 2016 to (Start of Test Seasons - 1)
-    # Test: Test Seasons
-    
     train_df = valid_data[~valid_data['season'].isin(TEST_SEASONS)].copy()
     test_df = valid_data[valid_data['season'].isin(TEST_SEASONS)].copy()
     
@@ -64,7 +69,7 @@ def run_validation_suite():
     print("\nTraining XGBoost Regressor...")
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
-        n_estimators=3000,          # Increased slightly for deeper learning
+        n_estimators=3000,
         learning_rate=0.005,
         max_depth=4,
         min_child_weight=3,
@@ -99,6 +104,9 @@ def run_validation_suite():
 def generate_plots(model, y_val, y_pred):
     print("\n--- GENERATING PLOTS ---")
     
+    if not os.path.exists('Plots'):
+        os.makedirs('Plots')
+
     # A. Learning Curve
     results = model.evals_result()
     epochs = len(results['validation_0']['rmse'])
@@ -112,8 +120,8 @@ def generate_plots(model, y_val, y_pred):
     plt.xlabel('Iterations')
     plt.title('XGBoost Learning Curve')
     plt.grid(True)
-    plt.savefig('report_learning_curve.png')
-    print("Saved report_learning_curve.png")
+    plt.savefig('Plots/report_learning_curve.png')
+    print("Saved Plots/report_learning_curve.png")
 
     # B. Scatter Plot
     plt.figure(figsize=(8, 8))
@@ -126,8 +134,8 @@ def generate_plots(model, y_val, y_pred):
     plt.title('Predicted vs. Actual Scores')
     plt.legend()
     plt.grid(True)
-    plt.savefig('report_scatter.png')
-    print("Saved report_scatter.png")
+    plt.savefig('Plots/report_scatter.png')
+    print("Saved Plots/report_scatter.png")
 
     # C. Residuals
     residuals = y_val - y_pred
@@ -136,16 +144,16 @@ def generate_plots(model, y_val, y_pred):
     plt.title('Residual Error Distribution')
     plt.xlabel('Error (Actual - Predicted)')
     plt.axvline(x=0, color='black', linestyle='--')
-    plt.savefig('report_residuals.png')
-    print("Saved report_residuals.png")
+    plt.savefig('Plots/report_residuals.png')
+    print("Saved Plots/report_residuals.png")
 
     # D. Feature Importance
     plt.figure(figsize=(10, 8))
     xgb.plot_importance(model, max_num_features=15)
     plt.title("Feature Importance")
     plt.tight_layout()
-    plt.savefig('report_features.png')
-    print("Saved report_features.png")
+    plt.savefig('Plots/report_features.png')
+    print("Saved Plots/report_features.png")
 
 def run_betting_simulation(df, preds, actuals):
     print("\n--- BETTING SIMULATION ---")
@@ -156,38 +164,73 @@ def run_betting_simulation(df, preds, actuals):
     sim_df['Actual_Total'] = actuals
     sim_df['Edge'] = sim_df['Predicted_Total'] - sim_df['total_line']
     
-    # Define thresholds to test
+    # -----------------------------------------------------------
+    # ADD WIN/LOSS COLUMNS FOR CSV EXPORT
+    # -----------------------------------------------------------
+    # 1. Determine Recommendation (Over/Under/Pass)
+    def get_rec(edge):
+        if edge > 0: return 'OVER'
+        if edge < 0: return 'UNDER'
+        return 'PASS'
+    
+    sim_df['Recommendation'] = sim_df['Edge'].apply(get_rec)
+
+    # 2. Determine Result (Win/Loss/Push)
+    def get_result(row):
+        rec = row['Recommendation']
+        actual = row['Actual_Total']
+        line = row['total_line']
+        
+        if rec == 'PASS': return 'PUSH'
+        
+        if rec == 'OVER':
+            if actual > line: return 'WIN'
+            if actual < line: return 'LOSS'
+            return 'PUSH'
+            
+        if rec == 'UNDER':
+            if actual < line: return 'WIN'
+            if actual > line: return 'LOSS'
+            return 'PUSH'
+            
+        return 'ERROR'
+
+    sim_df['Result'] = sim_df.apply(get_result, axis=1)
+
+    # -----------------------------------------------------------
+    # PRINT SUMMARY STATS
+    # -----------------------------------------------------------
     thresholds = [0, 1, 2, 3, 4, 5]
     
     for t in thresholds:
         # Filter bets with enough edge
-        active_bets = sim_df[abs(sim_df['Edge']) >= t].copy()
+        active_bets = sim_df[abs(sim_df['Edge']) >= t]
         
         if len(active_bets) == 0:
             continue
             
-        # Determine Winners
-        # Over: Edge > 0 AND Actual > Line
-        # Under: Edge < 0 AND Actual < Line
-        active_bets['Win'] = (
-            ((active_bets['Edge'] > 0) & (active_bets['Actual_Total'] > active_bets['total_line'])) |
-            ((active_bets['Edge'] < 0) & (active_bets['Actual_Total'] < active_bets['total_line']))
-        )
+        # Calculate Win Rate excluding Pushes
+        decisive_bets = active_bets[active_bets['Result'] != 'PUSH']
+        wins = decisive_bets[decisive_bets['Result'] == 'WIN']
         
-        # Pushes (Actual == Line) are generally not losses, but for simplicity here excluded or counted as loss
-        # Let's handle pushes by removing them from denominator
-        pushes = active_bets[active_bets['Actual_Total'] == active_bets['total_line']]
-        decisive_bets = active_bets[active_bets['Actual_Total'] != active_bets['total_line']]
-        
-        win_rate = decisive_bets['Win'].mean()
-        volume = len(active_bets)
-        
-        print(f"Edge > {t} pts: {volume} bets | Win Rate: {win_rate*100:.2f}%")
+        if len(decisive_bets) > 0:
+            win_rate = len(wins) / len(decisive_bets)
+            print(f"Edge > {t} pts: {len(active_bets)} bets ({len(decisive_bets)} decisive) | Win Rate: {win_rate*100:.2f}%")
+        else:
+            print(f"Edge > {t} pts: {len(active_bets)} bets | No decisive results")
 
-    # Export detailed results
-    sim_df = sim_df[['season', 'week', 'home_team', 'away_team', 'total_line', 'Predicted_Total', 'Actual_Total', 'Edge']]
-    sim_df.to_csv('simulation_results.csv', index=False)
-    print("\nDetailed simulation results saved to simulation_results.csv")
+    # Export detailed results including the new columns
+    if not os.path.exists('Plots'):
+        os.makedirs('Plots')
+        
+    export_cols = [
+        'season', 'week', 'home_team', 'away_team', 
+        'total_line', 'Predicted_Total', 'Actual_Total', 
+        'Edge', 'Recommendation', 'Result'
+    ]
+    
+    sim_df[export_cols].to_csv('Plots/simulation_results.csv', index=False)
+    print("\nDetailed results (with Win/Loss columns) saved to Plots/simulation_results.csv")
 
 if __name__ == "__main__":
     run_validation_suite()

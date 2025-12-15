@@ -78,6 +78,76 @@ def fetch_team_stats():
         except Exception as e:
             print(f"    CRITICAL ERROR for {season}: {e}")
 
+def fetch_qb_stats():
+    """
+    Manually fetches weekly player stats to calculate QB metrics.
+    Bypasses nfl_data_py 404 errors by hitting the raw CSV release directly.
+    """
+    print("Fetching Weekly Player Stats (Manual Mode)...")
+    
+    # Correct URL pattern for nflverse player stats
+    url_template = "https://github.com/nflverse/nflverse-data/releases/download/player_stats/stats_player_week_{season}.csv"
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    all_qbs = []
+
+    for season in SEASONS_TO_FETCH:
+        try:
+            target_url = url_template.format(season=season)
+            print(f"  - Downloading {season} player stats...")
+            
+            response = requests.get(target_url, headers=headers)
+            
+            if response.status_code == 200:
+                df = pd.read_csv(StringIO(response.text))
+                
+                # Filter for QBs immediately to save memory
+                # We also filter for attempts > 0 to remove QBs who just held for kicks
+                # OR check position == 'QB'
+                if 'position' in df.columns:
+                    df_qb_season = df[df['position'] == 'QB'].copy()
+                else:
+                    # Fallback if position column is missing (unlikely in this file)
+                    # We check for passing attempts
+                    df_qb_season = df[df['attempts'] > 0].copy()
+
+                if not df_qb_season.empty:
+                    all_qbs.append(df_qb_season)
+                    print(f"    SUCCESS: Found {len(df_qb_season)} QB records.")
+                else:
+                    print(f"    WARNING: No QB data found for {season}.")
+            else:
+                print(f"    FAILURE: Server returned {response.status_code} for {season}")
+                
+        except Exception as e:
+            print(f"    CRITICAL ERROR for {season}: {e}")
+
+    if all_qbs:
+        print("Concatenating QB data...")
+        final_df = pd.concat(all_qbs, ignore_index=True)
+        
+        # Select key columns
+        # dakota = Adjusted EPA + CPOE composite (Predictive Gold Standard)
+        target_cols = [
+            'player_id', 'player_display_name', 'season', 'week', 
+            'attempts', 'completions', 'passing_yards', 'passing_tds', 
+            'interceptions', 'passing_epa', 'dakota' 
+        ]
+        
+        # Ensure columns exist before selecting
+        available_cols = [c for c in target_cols if c in final_df.columns]
+        final_df = final_df[available_cols]
+        
+        output_path = os.path.join(DATA_DIR, "stats_player_qb.csv")
+        final_df.to_csv(output_path, index=False)
+        print(f"SUCCESS: Saved QB stats to {output_path} ({len(final_df)} rows)")
+    else:
+        print("ERROR: No QB stats could be fetched.")
+
+
 def main():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
@@ -87,6 +157,7 @@ def main():
     
     fetch_schedules()
     fetch_team_stats()
+    fetch_qb_stats()  # <--- ADD THIS LINE
     
     print("--- Pipeline Complete ---")
 

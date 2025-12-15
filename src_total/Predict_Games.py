@@ -6,13 +6,23 @@ import os
 
 # --- CONFIGURATION ---
 FEATURE_COLUMNS = [
-    'total_line', 'spread_line', 'week', 'weather_temp', 'weather_wind_mph', 'away_rest', 'home_rest',
+    'total_line', 'spread_line', 'week', 'weather_temp', 'weather_wind_mph',
+    'away_rest', 'home_rest',
+    
+    # Efficiency Features
     'away_avg_passing_epa', 'home_avg_passing_epa_allowed',
     'away_avg_rushing_epa', 'home_avg_rushing_epa_allowed',
     'home_avg_passing_epa', 'away_avg_passing_epa_allowed',
     'home_avg_rushing_epa', 'away_avg_rushing_epa_allowed',
+    
+    # Scoring Features
     'away_avg_points_scored', 'home_avg_points_allowed',
-    'home_avg_points_scored', 'away_avg_points_allowed'
+    'home_avg_points_scored', 'away_avg_points_allowed',
+
+    # --- NEW PACE FEATURES ---
+    # How fast does the Away team play? vs How fast does Home defense force you to play?
+    'away_avg_plays', 'home_avg_plays_allowed',
+    'home_avg_plays', 'away_avg_plays_allowed'
 ]
 
 def run_xgboost_regression():
